@@ -5,7 +5,7 @@ function M.setup(opts)
   -- Set default options
   opts = opts or {}
   opts.keymap = opts.keymap or "<leader>cf"
-  local core = require("oil-copy-contents.core")
+  local core = require("oil-copy.core")
 
   -- Define the keymap
   local new_keymaps = {
