@@ -13,6 +13,11 @@ function M.copy_entry_contents()
     return
   end
 
+  if not entry.path then
+    vim.notify("Cannot copy entry (e.g., '..' at root)", vim.log.levels.WARN)
+    return
+  end
+
   -- Handle Directories
   if entry.type == "directory" then
     local dir_path = entry.path
@@ -23,7 +28,7 @@ function M.copy_entry_contents()
     local function traverse(path)
       local ok, items = pcall(vim.fn.readdir, path)
       if not ok then
-        vim.notify("Could not read directory: " .. path, vim.log.levels.ERROR)
+        vim.notify("Could not read directory: " .. tostring(path), vim.log.levels.ERROR)
         return
       end
 
@@ -37,14 +42,14 @@ function M.copy_entry_contents()
               local read_ok, content_lines = pcall(vim.fn.readfile, item_path)
               if read_ok then
                 all_content = all_content
-                  .. "-- "
-                  .. item_path
-                  .. "\n\n"
-                  .. table.concat(content_lines, "\n")
-                  .. "\n\n"
+                    .. "-- "
+                    .. item_path
+                    .. "\n\n"
+                    .. table.concat(content_lines, "\n")
+                    .. "\n\n"
                 file_count = file_count + 1
               else
-                vim.notify("Could not read file: " .. item_path, vim.log.levels.WARN)
+                vim.notify("Could not read file: " .. tostring(item_path), vim.log.levels.WARN)
               end
             end
           end
@@ -62,7 +67,7 @@ function M.copy_entry_contents()
       vim.notify("No readable files found in directory", vim.log.levels.WARN)
     end
 
-  -- Handle Files
+    -- Handle Files
   elseif entry.type == "file" then
     local file_path = entry.path
     if vim.fn.filereadable(file_path) == 0 then
@@ -83,7 +88,7 @@ function M.copy_entry_contents()
     local filename = vim.fn.fnamemodify(file_path, ":t")
     vim.notify("Copied content of " .. filename, vim.log.levels.INFO)
 
-  --  Handle Other Types
+    -- Handle Other Types
   else
     vim.notify("Cannot copy contents of type: " .. entry.type, vim.log.levels.WARN)
   end
