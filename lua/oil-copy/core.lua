@@ -118,9 +118,42 @@ function M.copy_visual_selection()
     return
   end
   
+  -- Save current cursor position
+  local original_pos = vim.api.nvim_win_get_cursor(0)
+  
+  -- First, collect all entries to process
+  local entries_to_process = {}
+  local buf = vim.api.nvim_get_current_buf()
+  local line_count = vim.api.nvim_buf_line_count(buf)
+  
+  for line_num = start_line, end_line do
+    if line_num <= line_count then
+      -- Safely set cursor position
+      pcall(vim.api.nvim_win_set_cursor, 0, {line_num, 0})
+      local entry = oil.get_cursor_entry()
+      
+      if entry and entry.name and entry.name ~= ".." then
+        local full_path = dir:gsub("/$", "") .. "/" .. entry.name
+        table.insert(entries_to_process, {
+          path = full_path,
+          type = entry.type,
+          name = entry.name
+        })
+      end
+    end
+  end
+  
+  -- Restore cursor position
+  pcall(vim.api.nvim_win_set_cursor, 0, original_pos)
+  
+  if #entries_to_process == 0 then
+    vim.notify("No valid entries selected", vim.log.levels.WARN)
+    return
+  end
+  
   local all_content = ""
   local file_count = 0
-  local processed_entries = {}
+  local processed_paths = {}
   
   -- Helper function to read a single file and add to content
   local function add_file_content(file_path, include_comment)
@@ -160,23 +193,15 @@ function M.copy_visual_selection()
     end
   end
   
-  -- Iterate through each line in the visual selection
-  for line_num = start_line, end_line do
-    vim.api.nvim_win_set_cursor(0, {line_num, 0})
-    local entry = oil.get_cursor_entry()
-    
-    if entry and entry.name and entry.name ~= ".." then
-      local full_path = dir:gsub("/$", "") .. "/" .. entry.name
+  -- Now process all collected entries
+  for _, entry in ipairs(entries_to_process) do
+    if not processed_paths[entry.path] then
+      processed_paths[entry.path] = true
       
-      -- Skip if we've already processed this entry
-      if not processed_entries[full_path] then
-        processed_entries[full_path] = true
-        
-        if entry.type == "directory" then
-          traverse_directory(full_path)
-        elseif entry.type == "file" then
-          add_file_content(full_path, true) -- Always include comment for multiple files
-        end
+      if entry.type == "directory" then
+        traverse_directory(entry.path)
+      elseif entry.type == "file" then
+        add_file_content(entry.path, true) -- Always include comment for multiple files
       end
     end
   end
