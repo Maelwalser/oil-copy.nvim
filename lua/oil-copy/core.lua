@@ -13,14 +13,23 @@ function M.copy_entry_contents()
     return
   end
 
-  if not entry.path then
-    vim.notify("Cannot copy entry (e.g., '..' at root)", vim.log.levels.WARN)
+  if not entry.name or entry.name == ".." then
+    vim.notify("Cannot copy parent directory reference", vim.log.levels.WARN)
     return
   end
 
+  -- Get the current Oil directory and construct the full path
+  local dir = oil.get_current_dir()
+  if not dir then
+    vim.notify("Could not determine current directory", vim.log.levels.ERROR)
+    return
+  end
+
+  -- Construct full path: remove trailing slash if present, then add entry name
+  local full_path = dir:gsub("/$", "") .. "/" .. entry.name
+
   -- Handle Directories
   if entry.type == "directory" then
-    local dir_path = entry.path
     local all_content = ""
     local file_count = 0
 
@@ -58,7 +67,7 @@ function M.copy_entry_contents()
     end
 
     -- Start the traversal
-    traverse(dir_path)
+    traverse(full_path)
 
     if all_content ~= "" then
       vim.fn.setreg("+", all_content) -- Copy to system clipboard
@@ -69,24 +78,22 @@ function M.copy_entry_contents()
 
     -- Handle Files
   elseif entry.type == "file" then
-    local file_path = entry.path
-    if vim.fn.filereadable(file_path) == 0 then
-      vim.notify("File is not readable: " .. file_path, vim.log.levels.WARN)
+    if vim.fn.filereadable(full_path) == 0 then
+      vim.notify("File is not readable: " .. full_path, vim.log.levels.WARN)
       return
     end
 
     -- Safely read the file
-    local read_ok, content_lines = pcall(vim.fn.readfile, file_path)
+    local read_ok, content_lines = pcall(vim.fn.readfile, full_path)
 
     if not read_ok then
-      vim.notify("Could not read file (e.g., binary): " .. file_path, vim.log.levels.ERROR)
+      vim.notify("Could not read file (e.g., binary): " .. full_path, vim.log.levels.ERROR)
       return
     end
 
     local file_content = table.concat(content_lines, "\n")
     vim.fn.setreg("+", file_content)
-    local filename = vim.fn.fnamemodify(file_path, ":t")
-    vim.notify("Copied content of " .. filename, vim.log.levels.INFO)
+    vim.notify("Copied content of " .. entry.name, vim.log.levels.INFO)
 
     -- Handle Other Types
   else
