@@ -23,8 +23,6 @@ function M.setup(opts)
       -- Visual mode: copy multiple entries
       vim.keymap.set("v", keymap, function()
         core.copy_visual_selection()
-        -- Exit visual mode after copying
-        vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", false)
       end, {
         buffer = args.buf,
         desc = visual_keymap_desc,
